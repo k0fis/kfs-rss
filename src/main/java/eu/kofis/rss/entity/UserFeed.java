@@ -1,9 +1,12 @@
 package eu.kofis.rss.entity;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -12,7 +15,11 @@ import java.util.List;
 
 @Entity
 @Table(name = "user_feeds", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "feed_id"}))
-public class UserFeed extends PanacheEntity {
+public class UserFeed extends PanacheEntityBase {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    public Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     public User user;
