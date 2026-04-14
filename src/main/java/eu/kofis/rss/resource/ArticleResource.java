@@ -6,7 +6,6 @@ import eu.kofis.rss.entity.Feed;
 import eu.kofis.rss.entity.User;
 import eu.kofis.rss.entity.UserArticle;
 import eu.kofis.rss.entity.UserFeed;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -25,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 @Path("/articles")
-@RolesAllowed("user")
 @Produces(MediaType.APPLICATION_JSON)
 public class ArticleResource {
 

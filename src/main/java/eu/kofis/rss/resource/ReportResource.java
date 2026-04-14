@@ -6,7 +6,6 @@ import eu.kofis.rss.entity.Feed;
 import eu.kofis.rss.entity.User;
 import eu.kofis.rss.entity.UserArticle;
 import eu.kofis.rss.entity.UserFeed;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -23,7 +22,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Path("/reports")
-@RolesAllowed("user")
 @Produces(MediaType.APPLICATION_JSON)
 public class ReportResource {
 

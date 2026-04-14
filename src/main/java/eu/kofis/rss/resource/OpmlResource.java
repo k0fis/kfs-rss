@@ -4,7 +4,6 @@ import eu.kofis.rss.entity.Feed;
 import eu.kofis.rss.entity.User;
 import eu.kofis.rss.entity.UserFeed;
 import eu.kofis.rss.resource.FeedResource;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -38,7 +37,6 @@ import java.util.Map;
 import java.util.Set;
 
 @Path("/feeds/opml")
-@RolesAllowed("user")
 public class OpmlResource {
 
     @GET

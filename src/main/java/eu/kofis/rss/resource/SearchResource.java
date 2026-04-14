@@ -5,7 +5,6 @@ import eu.kofis.rss.entity.Article;
 import eu.kofis.rss.entity.User;
 import eu.kofis.rss.entity.UserArticle;
 import eu.kofis.rss.entity.UserFeed;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.ws.rs.DefaultValue;
@@ -24,7 +23,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Path("/search")
-@RolesAllowed("user")
 @Produces(MediaType.APPLICATION_JSON)
 public class SearchResource {
 
