@@ -1,0 +1,16 @@
+[Unit]
+Description=kfs-rss backend (Quarkus)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/rss-backend
+ExecStart=/usr/bin/java -jar /opt/rss-backend/kfs-rss-runner.jar
+Environment=DB_PASSWORD=changeme
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
