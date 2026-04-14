@@ -1,11 +1,12 @@
-# kfs-rss deploy instrukce
+# kfs-rss deploy
 
-## 1. PostgreSQL — vytvorit DB + user
+## Instalace (prvni nasazeni)
+
+### 1. PostgreSQL
 
 ```bash
 su - postgres -c "createuser kfs_rss"
 su - postgres -c "createdb kfs_rss -O kfs_rss"
-# Nastavit heslo
 su - postgres -c "psql -c \"ALTER USER kfs_rss WITH PASSWORD 'HESLO';\""
 ```
 
@@ -16,57 +17,29 @@ local   kfs_rss   kfs_rss   md5
 
 Pak: `systemctl reload postgresql`
 
-Pozn: Tabulky vytvori Flyway automaticky pri prvnim startu aplikace.
+Pozn: Tabulky vytvori Flyway automaticky pri prvnim startu.
 
-## 2. Deploy JAR
+### 2. JAR + systemd
 
 ```bash
 mkdir -p /opt/rss-backend
-# Stahnout artifact z GitHub Actions, nebo buildit lokalne:
-# ./mvnw package -Dquarkus.package.jar.type=uber-jar -DskipTests
-cp target/*-runner.jar /opt/rss-backend/kfs-rss-runner.jar
-```
-
-## 3. systemd service
-
-```bash
+cp deploy/update-rss.sh /opt/rss-backend/
 cp deploy/kfs-rss.service /etc/systemd/system/
-# UPRAVIT heslo v Environment=DB_PASSWORD=...
+
+# Upravit heslo:
 vi /etc/systemd/system/kfs-rss.service
+# Environment=DB_PASSWORD=...
+
 systemctl daemon-reload
 systemctl enable kfs-rss
-systemctl start kfs-rss
-# Overit:
-journalctl -u kfs-rss -f
+
+# Stahnout JAR a spustit:
+/opt/rss-backend/update-rss.sh v1.0.0
 ```
 
-## 4. Vytvorit uzivatele
+### 3. Apache
 
-```bash
-curl -X POST http://localhost:8180/auth/setup \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"kofis","password":"HESLO"}'
-```
-
-## 5. Migrace dat (jednorazove)
-
-Zastavit service, upravit properties, spustit:
-```bash
-systemctl stop kfs-rss
-# Spustit s migraci:
-DB_PASSWORD=HESLO java -jar /opt/rss-backend/kfs-rss-runner.jar \
-  -Dkfs.rss.migration.enabled=true \
-  -Dkfs.rss.migration.data-dir=/var/www/html/rss/data \
-  -Dkfs.rss.migration.webdav-dir=/media/storage/webdav/rss \
-  -Dkfs.rss.migration.cache-file=/opt/rss/cache.json
-# Pockej na "DATA MIGRATION COMPLETE" v logu
-# Ctrl+C, pak:
-systemctl start kfs-rss
-```
-
-## 6. Apache — pridat proxy, odstranit stary RSS
-
-V OBOU VHostech (k-server-local.conf + k-server-ssl.conf) pridat:
+V OBOU VHostech (`k-server-local.conf` + `k-server-ssl.conf`) pridat:
 
 ```apache
     # RSS backend (Quarkus)
@@ -77,27 +50,30 @@ V OBOU VHostech (k-server-local.conf + k-server-ssl.conf) pridat:
     </Location>
 ```
 
-A ODSTRANIT stary RSS WebDAV blok:
+A ODSTRANIT stary RSS WebDAV blok (pokud existuje):
 ```apache
-    # SMAZAT tento blok:
+    # SMAZAT:
     <Location /dav/rss>
         Header always unset WWW-Authenticate
     </Location>
 ```
 
-Pozn: WebDAV `/dav` blok zustava (pouziva ho Notes). Jen se odebere RSS-specificka Location.
-
-Zapnout proxy modul (pokud jeste neni):
 ```bash
 a2enmod proxy proxy_http
 systemctl reload apache2
 ```
 
-## 7. Deploy SPA
+### 4. Vytvorit uzivatele
 
-SPA uz je v k-server-web repu (updatovany index.html). Deploy jako obvykle pres updator.
+```bash
+curl -X POST http://localhost:8180/auth/setup \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"kofis","password":"HESLO"}'
+```
 
-## 8. Vypnout Python cron
+### 5. Deploy SPA + vypnout Python cron
+
+SPA deploy pres updator (k-server-web).
 
 V crontabu zakomentovat:
 ```bash
@@ -105,21 +81,63 @@ V crontabu zakomentovat:
 #*/30 * * * * /opt/rss/fetch-feeds.py > /opt/rss/last-fetch.log 2>&1
 ```
 
-## 9. Overeni
+### 6. Overeni
 
 ```bash
-# Auth
 curl -u kofis:HESLO https://k-server.local/api/rss/auth/check
-# Feedy
 curl -u kofis:HESLO https://k-server.local/api/rss/feeds
-# Refresh
 curl -u kofis:HESLO -X POST https://k-server.local/api/rss/feeds/refresh
 ```
 
+---
+
+## Migrace dat (jednorazova)
+
+Import z legacy souboru (OPML, state.json, starred.json, cache.json) do PostgreSQL.
+
+```bash
+systemctl stop kfs-rss
+
+DB_PASSWORD=HESLO java -jar /opt/rss-backend/kfs-rss-runner.jar \
+  -Dkfs.rss.migration.enabled=true \
+  -Dkfs.rss.migration.data-dir=/var/www/html/rss/data \
+  -Dkfs.rss.migration.webdav-dir=/media/storage/webdav/rss \
+  -Dkfs.rss.migration.cache-file=/opt/rss/cache.json
+
+# Pockej na "DATA MIGRATION COMPLETE" v logu, pak Ctrl+C
+
+systemctl start kfs-rss
+```
+
+---
+
+## Aktualizace (rutinni)
+
+### Na dev stroji
+
+```bash
+git tag v1.x.x
+git push --tags
+# Pockej na GitHub Actions → Release
+```
+
+### Na serveru
+
+```bash
+/opt/rss-backend/update-rss.sh v1.x.x
+# Nebo bez verze (latest):
+/opt/rss-backend/update-rss.sh
+```
+
+Script automaticky: stahne JAR → zastavi service → backup → nahradi → spusti → overi.
+Pri selhani startu provede rollback z `.bak`.
+
+---
+
 ## Rollback
 
-Kdyby neco selhalo:
-1. `systemctl stop kfs-rss`
-2. Odkomentovat Python cron
-3. V Apache: odstranit ProxyPass, vratit `<Location /dav/rss>`
-4. SPA: git revert v k-server-web
+```bash
+systemctl stop kfs-rss
+mv /opt/rss-backend/kfs-rss-runner.jar.bak /opt/rss-backend/kfs-rss-runner.jar
+systemctl start kfs-rss
+```
