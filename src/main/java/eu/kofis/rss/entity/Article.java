@@ -69,10 +69,14 @@ public class Article extends PanacheEntityBase {
     }
 
     public static long deleteExcessForFeed(Feed feed, int maxArticles) {
+        long total = find(
+                "feed = ?1 AND id NOT IN (SELECT ua.article.id FROM UserArticle ua WHERE ua.isStarred = true)",
+                feed).count();
+        if (total <= maxArticles) return 0;
         List<Article> excess = find(
                 "feed = ?1 AND id NOT IN (SELECT ua.article.id FROM UserArticle ua WHERE ua.isStarred = true) " +
                 "ORDER BY publishedAt DESC", feed)
-                .page(maxArticles, Integer.MAX_VALUE).list();
+                .range(maxArticles, (int) total - 1).list();
         if (excess.isEmpty()) return 0;
         List<Long> ids = excess.stream().map(a -> a.id).toList();
         return delete("id IN ?1", ids);
