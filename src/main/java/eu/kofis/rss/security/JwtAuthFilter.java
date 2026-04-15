@@ -1,5 +1,7 @@
 package eu.kofis.rss.security;
 
+import eu.kofis.rss.entity.User;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.annotation.Priority;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -39,6 +41,8 @@ public class JwtAuthFilter implements ContainerRequestFilter {
             return;
         }
 
+        ensureUserExists(username);
+
         ctx.setSecurityContext(new SecurityContext() {
             @Override
             public Principal getUserPrincipal() {
@@ -58,6 +62,16 @@ public class JwtAuthFilter implements ContainerRequestFilter {
             @Override
             public String getAuthenticationScheme() {
                 return "Bearer";
+            }
+        });
+    }
+
+    void ensureUserExists(String username) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            if (User.findByUsername(username) == null) {
+                User user = new User();
+                user.username = username;
+                user.persist();
             }
         });
     }

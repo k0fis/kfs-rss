@@ -20,9 +20,6 @@ public class User extends PanacheEntityBase {
     @Column(unique = true, nullable = false, length = 64)
     public String username;
 
-    @Column(nullable = false)
-    public String password;
-
     @Column(name = "created_at", nullable = false)
     public Instant createdAt = Instant.now();
 
